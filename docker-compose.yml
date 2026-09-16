@@ -1,0 +1,55 @@
+
+services:
+  # Service Backend (Laravel)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yowl-backend
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./backend:/var/www
+    ports:
+      - "8000:8000"
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: yowl_db
+      DB_USERNAME: yowl_user
+      DB_PASSWORD: yowl_password
+    depends_on:
+      - postgres
+
+  # Service Frontend (Vue.js + Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: yowl-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # Exigence du sujet YOWL
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  # Service Base de Données (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: yowl-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: yowl_db
+      POSTGRES_USER: yowl_user
+      POSTGRES_PASSWORD: yowl_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
