@@ -1,0 +1,9 @@
+$kind: http-request
+method: GET
+url: '{{base_url}}/urls'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'

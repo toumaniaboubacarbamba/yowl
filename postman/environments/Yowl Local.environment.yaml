@@ -1,0 +1,18 @@
+name: Yowl Local
+values:
+  - key: base_url
+    value: 'http://localhost:8000/api'
+    enabled: true
+    type: default
+  - key: token
+    value: ''
+    enabled: true
+    type: default
+  - key: url_id
+    value: '1'
+    enabled: true
+    type: default
+  - key: comment_id
+    value: '1'
+    enabled: true
+    type: default

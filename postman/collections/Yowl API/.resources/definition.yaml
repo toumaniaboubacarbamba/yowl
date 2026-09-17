@@ -1,0 +1,8 @@
+$kind: collection
+name: Yowl API
+description: API collection for the Yowl application — a URL-based commenting platform built with Laravel + Sanctum.
+variables:
+  - key: base_url
+    value: 'http://localhost:8000/api'
+  - key: token
+    value: ''

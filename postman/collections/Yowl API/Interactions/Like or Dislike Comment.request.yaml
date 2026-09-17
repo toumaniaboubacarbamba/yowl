@@ -1,0 +1,15 @@
+$kind: http-request
+method: POST
+url: '{{base_url}}/comments/{{comment_id}}/interactions'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "type": "like"
+    }
