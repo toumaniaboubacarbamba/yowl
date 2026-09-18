@@ -12,24 +12,38 @@ class CommentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'url' => 'required|url',
-            'content' => 'required|string|max:1000',
+            'url_id'    => 'nullable|exists:urls,id',
+            'url'       => 'nullable', // On retire la contrainte strict |url ici
+            'content'   => 'required|string|max:1000',
             'parent_id' => 'nullable|exists:comments,id',
         ]);
 
-        // Vérifier si l'URL existe déjà ou la créer
-        $domain = parse_url($request->url, PHP_URL_HOST);
-        $urlRecord = Url::firstOrCreate(
-            ['url' => $request->url],
-            ['domain_name' => $domain]
-        );
+        $urlId = $request->url_id;
 
-        // Créer le commentaire
+        // Si l'ID n'est pas renseigné dans url_id mais transmis dans 'url'
+        if (!$urlId && $request->url) {
+            if (is_numeric($request->url)) {
+                $urlId = (int) $request->url;
+            } else if (filter_var($request->url, FILTER_VALIDATE_URL)) {
+                $domain = parse_url($request->url, PHP_URL_HOST) ?? 'web';
+                $urlRecord = Url::firstOrCreate(
+                    ['url' => $request->url],
+                    ['domain' => $domain]
+                );
+                $urlId = $urlRecord->id;
+            }
+        }
+
+        if (!$urlId) {
+            return response()->json(['message' => 'Une URL valide ou un ID d\'URL est requis.'], 422);
+        }
+
+        // Création du commentaire
         $comment = Comment::create([
-            'user_id' => $request->user()->id,
-            'url_id' => $urlRecord->id,
+            'user_id'   => $request->user()->id,
+            'url_id'    => $urlId,
             'parent_id' => $request->parent_id,
-            'content' => $request->content,
+            'content'   => $request->content,
         ]);
 
         return response()->json($comment->load('user'), 201);

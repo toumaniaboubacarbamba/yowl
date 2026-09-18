@@ -1,105 +1,95 @@
 <script setup lang="ts">
-import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { RouterLink, RouterView } from 'vue-router'
+import { onMounted } from 'vue'
+import AppFooter from './components/AppFooter.vue'
 import { useAuthStore } from './stores/auth'
 
 const authStore = useAuthStore()
-const router = useRouter()
 
-const handleLogout = async () => {
-  await authStore.logout()
-  router.push('/login')
-}
+onMounted(() => {
+  if (authStore.token) {
+    authStore.fetchUser()
+  }
+})
 </script>
 
 <template>
-  <header class="navbar">
-    <div class="nav-container">
-      <RouterLink to="/" class="brand">Yowl 🦉</RouterLink>
-      <nav>
-        <RouterLink to="/">Accueil</RouterLink>
-        <template v-if="authStore.isAuthenticated">
-          <span class="user-greeting">Bonjour, {{ authStore.user?.name }}</span>
-          <button @click="handleLogout" class="logout-btn">Déconnexion</button>
-        </template>
-        <template v-else>
-          <RouterLink to="/login">Connexion</RouterLink>
-          <RouterLink to="/register" class="register-link">Inscription</RouterLink>
-        </template>
-      </nav>
-    </div>
-  </header>
+  <div class="bg-background text-on-surface antialiased min-h-screen flex flex-col font-sans">
 
-  <main class="main-content">
-    <RouterView />
-  </main>
+    <!-- Navbar Header -->
+    <header class="bg-surface-container-lowest border-b border-outline-variant/30 shadow-sm sticky top-0 z-50 backdrop-blur-md">
+      <div class="max-w-[1320px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
+
+        <!-- Left: Logo & Search -->
+        <div class="flex items-center gap-6">
+          <RouterLink to="/" class="flex items-center gap-2">
+            <span class="font-headline font-extrabold text-2xl text-primary tracking-tight">YOWL</span>
+            <span class="text-[10px] font-bold text-primary bg-primary-fixed px-1.5 py-0.5 rounded font-mono">v1.4</span>
+          </RouterLink>
+
+          <!-- Search Bar -->
+          <div class="relative hidden md:block w-72">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+            <input
+              type="text"
+              placeholder="Chercher une discussion ou URL..."
+              class="w-full pl-9 pr-12 py-1.5 bg-surface-container-low border border-outline-variant/30 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all placeholder:text-outline"
+            />
+            <kbd class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-outline bg-surface-container px-1.5 py-0.5 rounded border border-outline-variant/30">⌘K</kbd>
+          </div>
+        </div>
+
+        <!-- Center: Categories Nav -->
+        <nav class="hidden lg:flex items-center gap-6 text-xs font-semibold text-on-surface-variant">
+          <RouterLink to="/" class="text-on-surface font-bold border-b-2 border-primary py-5">Tendances</RouterLink>
+          <a href="#" class="hover:text-primary transition-colors py-5">Débats chauds</a>
+          <a href="#" class="hover:text-primary transition-colors py-5">Vérification</a>
+          <a href="#" class="hover:text-primary transition-colors py-5">Sciences</a>
+          <a href="#" class="hover:text-primary transition-colors py-5">Tech</a>
+        </nav>
+
+        <!-- Right: Actions & Auth -->
+        <div class="flex items-center gap-3">
+          <!-- Button Ajouter un lien -->
+          <RouterLink
+            to="/"
+            class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs transition-all active:scale-95"
+          >
+            <span class="material-symbols-outlined text-[16px]">add_link</span>
+            <span>Ajouter un lien</span>
+          </RouterLink>
+
+          <template v-if="authStore.isAuthenticated">
+            <span class="text-xs font-bold text-on-surface hidden sm:inline">
+              {{ authStore.user?.name || 'Utilisateur' }}
+            </span>
+            <button
+              @click="authStore.logout()"
+              class="px-3 py-1.5 text-xs font-semibold text-error bg-error-container/30 rounded-lg hover:bg-error-container transition-colors"
+            >
+              Déconnexion
+            </button>
+          </template>
+
+          <template v-else>
+            <RouterLink
+              to="/auth"
+              class="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-surface-tint rounded-xl transition-all shadow-sm"
+            >
+              Se connecter
+            </RouterLink>
+          </template>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Main View -->
+    <main class="flex-1">
+      <RouterView />
+    </main>
+
+    <!-- AppFooter -->
+    <AppFooter />
+  </div>
 </template>
-
-<style>
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f7fafc;
-  color: #2d3748;
-}
-
-.navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 12px 24px;
-}
-
-.nav-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.brand {
-  font-size: 22px;
-  font-weight: bold;
-  color: #3182ce;
-  text-decoration: none;
-}
-
-nav {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-nav a {
-  color: #4a5568;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-nav a.router-link-active {
-  color: #3182ce;
-}
-
-.register-link {
-  background: #3182ce;
-  color: white !important;
-  padding: 6px 12px;
-  border-radius: 6px;
-}
-
-.user-greeting {
-  font-size: 14px;
-  color: #718096;
-}
-
-.logout-btn {
-  background: none;
-  border: 1px solid #cbd5e0;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.main-content {
-  padding: 20px;
-}
-</style>
