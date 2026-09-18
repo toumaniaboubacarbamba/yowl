@@ -88,6 +88,35 @@ const dislikeCount = (comment: { interactions?: { type: string }[] }) =>
 
 const myReaction = (comment: { interactions?: { user_id: number; type: string }[] }) =>
   comment.interactions?.find(i => i.user_id === authStore.user?.id)?.type
+
+// Édition d'un commentaire ou d'une réponse
+const editingId = ref<number | null>(null)
+const editContent = ref('')
+const submittingEdit = ref(false)
+
+const startEdit = (comment: { id: number; content: string }) => {
+  editingId.value = comment.id
+  editContent.value = comment.content
+}
+
+const cancelEdit = () => {
+  editingId.value = null
+  editContent.value = ''
+}
+
+const handleSaveEdit = async (commentId: number) => {
+  if (!editContent.value.trim() || submittingEdit.value) return
+
+  submittingEdit.value = true
+  try {
+    await discussionStore.updateComment(commentId, editContent.value)
+    editingId.value = null
+  } catch (error) {
+    console.error('Erreur lors de la modification du commentaire', error)
+  } finally {
+    submittingEdit.value = false
+  }
+}
 </script>
 
 <template>
@@ -192,11 +221,33 @@ const myReaction = (comment: { interactions?: { user_id: number; type: string }[
               <span class="font-bold text-on-surface">{{ comment.user?.name || 'Utilisateur anonyme' }}</span>
               <span class="text-[11px]">{{ comment.created_at }}</span>
             </div>
-            <p class="text-xs text-on-surface-variant leading-relaxed">
+            <p v-if="editingId !== comment.id" class="text-xs text-on-surface-variant leading-relaxed">
               {{ comment.content }}
             </p>
 
-            <!-- Actions : réagir / répondre / supprimer -->
+            <!-- Formulaire d'édition -->
+            <div v-else class="space-y-2">
+              <textarea
+                v-model="editContent"
+                rows="2"
+                class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+              ></textarea>
+              <div class="flex justify-end gap-2">
+                <button
+                  @click="cancelEdit"
+                  class="px-3 py-1.5 text-xs font-bold text-outline hover:text-on-surface rounded-xl transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  @click="handleSaveEdit(comment.id)"
+                  :disabled="!editContent.trim() || submittingEdit"
+                  class="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-surface-tint disabled:opacity-50 rounded-xl transition-all shadow-sm"
+                >
+                  {{ submittingEdit ? 'Enregistrement...' : 'Enregistrer' }}
+                </button>
+              </div>
+            </div>
             <div class="flex items-center gap-3 pt-1">
               <button
                 v-if="authStore.isAuthenticated"
@@ -222,6 +273,13 @@ const myReaction = (comment: { interactions?: { user_id: number; type: string }[
                 class="text-[11px] font-bold text-primary hover:underline"
               >
                 {{ replyingToId === comment.id ? 'Annuler' : 'Répondre' }}
+              </button>
+              <button
+                v-if="authStore.user?.id === comment.user_id && editingId !== comment.id"
+                @click="startEdit(comment)"
+                class="text-[11px] font-bold text-outline hover:text-on-surface hover:underline"
+              >
+                Modifier
               </button>
               <button
                 v-if="authStore.user?.id === comment.user_id"
@@ -262,9 +320,33 @@ const myReaction = (comment: { interactions?: { user_id: number; type: string }[
                   <span class="font-bold text-on-surface">{{ reply.user?.name || 'Utilisateur anonyme' }}</span>
                   <span class="text-[11px]">{{ reply.created_at }}</span>
                 </div>
-                <p class="text-xs text-on-surface-variant leading-relaxed">
+                <p v-if="editingId !== reply.id" class="text-xs text-on-surface-variant leading-relaxed">
                   {{ reply.content }}
                 </p>
+
+                <!-- Formulaire d'édition (réponse) -->
+                <div v-else class="space-y-2">
+                  <textarea
+                    v-model="editContent"
+                    rows="2"
+                    class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                  ></textarea>
+                  <div class="flex justify-end gap-2">
+                    <button
+                      @click="cancelEdit"
+                      class="px-3 py-1.5 text-xs font-bold text-outline hover:text-on-surface rounded-xl transition-all"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      @click="handleSaveEdit(reply.id)"
+                      :disabled="!editContent.trim() || submittingEdit"
+                      class="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-surface-tint disabled:opacity-50 rounded-xl transition-all shadow-sm"
+                    >
+                      {{ submittingEdit ? 'Enregistrement...' : 'Enregistrer' }}
+                    </button>
+                  </div>
+                </div>
                 <div class="flex items-center gap-3">
                   <button
                     v-if="authStore.isAuthenticated"
@@ -283,6 +365,13 @@ const myReaction = (comment: { interactions?: { user_id: number; type: string }[
                   >
                     <span class="material-symbols-outlined text-[14px]">thumb_down</span>
                     {{ dislikeCount(reply) }}
+                  </button>
+                  <button
+                    v-if="authStore.user?.id === reply.user_id && editingId !== reply.id"
+                    @click="startEdit(reply)"
+                    class="text-[11px] font-bold text-outline hover:text-on-surface hover:underline"
+                  >
+                    Modifier
                   </button>
                   <button
                     v-if="authStore.user?.id === reply.user_id"

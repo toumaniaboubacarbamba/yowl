@@ -66,4 +66,28 @@ class CommentController extends Controller
 
         return response()->json(['message' => 'Commentaire supprimé']);
     }
+
+        // Modifier un commentaire (Auteur uniquement)
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'content' => 'required|string|max:1000',
+        ]);
+
+        $comment = Comment::find($id);
+
+        if (!$comment) {
+            return response()->json(['message' => 'Commentaire introuvable'], 404);
+        }
+
+        if ($comment->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Action non autorisée'], 403);
+        }
+
+        $comment->update([
+            'content' => $request->content,
+        ]);
+
+        return response()->json($comment->load('user'));
+    }
 }

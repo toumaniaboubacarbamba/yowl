@@ -142,6 +142,7 @@ export const useDiscussionStore = defineStore('discussions', {
       }
     },
 
+
     // 5. Supprimer un commentaire ou une réponse (DELETE /api/comments/{id})
     async deleteComment(commentId: number) {
       try {
@@ -161,6 +162,26 @@ export const useDiscussionStore = defineStore('discussions', {
       } catch (err: unknown) {
         if (isAxiosError(err)) {
           console.error('Erreur lors de la suppression du commentaire:', err.response?.data?.message)
+        }
+        throw err
+      }
+    },
+        //  Modifier un commentaire ou une réponse (PUT /api/comments/{id})
+    async updateComment(commentId: number, content: string) {
+      try {
+        const response = await api.put(`/comments/${commentId}`, { content })
+        const updatedComment: Comment = response.data.data || response.data
+
+        const target = this.currentDiscussion?.comments
+          ?.flatMap(c => [c, ...(c.replies || [])])
+          .find(c => c.id === commentId)
+
+        if (target) {
+          target.content = updatedComment.content
+        }
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          console.error('Erreur lors de la modification du commentaire:', err.response?.data?.message)
         }
         throw err
       }
