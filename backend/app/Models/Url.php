@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['url', 'domain_name'])]
+#[Fillable(['url', 'domain', 'title', 'category', 'image_url'])]
 class Url extends Model
 {
     use HasFactory;

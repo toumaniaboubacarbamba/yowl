@@ -54,6 +54,8 @@ public function store(Request $request)
             if (isset($data['status']) && $data['status'] === 'success') {
                 $title = $data['data']['title'] ?? null;
                 $imageUrl = $data['data']['image']['url'] ?? null;
+            } else {
+                \Illuminate\Support\Facades\Log::warning('Microlink status non "success" pour ' . $rawUrl . ' : ' . json_encode($data));
             }
         } else {
             \Illuminate\Support\Facades\Log::error('Microlink HTTP Error: ' . $response->status() . ' - Body: ' . $response->body());

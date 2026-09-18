@@ -32,8 +32,10 @@ defineEmits(['vote', 'open'])
 
 <!-- src/components/DiscourseCard.vue -->
 <template>
-  <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group space-y-3">
-
+<div
+  class="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group space-y-3 cursor-pointer"
+  @click="$emit('open')"
+>
     <div class="flex items-center justify-between">
       <span class="inline-flex items-center gap-1.5 text-primary bg-primary-fixed/50 px-2.5 py-1 rounded-md text-xs font-mono font-semibold">
         <span class="material-symbols-outlined text-[14px]">public</span>
