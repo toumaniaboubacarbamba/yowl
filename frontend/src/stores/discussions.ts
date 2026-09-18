@@ -8,6 +8,8 @@ export interface Comment {
   user?: { name: string }
   content: string
   created_at: string
+  parent_id?: number | null
+  replies?: Comment[]
 }
 
 export interface UrlItem {
@@ -75,7 +77,16 @@ export const useDiscussionStore = defineStore('discussions', {
       this.loading = true
       try {
         const response = await api.get(`/urls/${id}`)
-        this.currentDiscussion = response.data.data || response.data
+        const discussion: UrlItem = response.data.data || response.data
+
+        // Le backend renvoie tous les commentaires (racines + réponses) dans un tableau plat,
+        // avec les réponses déjà nichées dans `replies` de leur parent (voir UrlController::show).
+        // On ne garde que les commentaires racines pour éviter d'afficher les réponses deux fois.
+        if (discussion.comments) {
+          discussion.comments = discussion.comments.filter(c => !c.parent_id)
+        }
+
+        this.currentDiscussion = discussion
       } catch (err: unknown) {
         if (isAxiosError(err)) {
           console.error('Erreur lors du chargement de l\'URL:', err.response?.data?.message)
@@ -85,28 +96,66 @@ export const useDiscussionStore = defineStore('discussions', {
       }
     },
 
-    // 4. Ajouter un commentaire (POST /api/comments)
-    async addComment(urlId: number, content: string) {
-  try {
-    const response = await api.post('/comments', {
-      url_id: urlId,
-      url: urlId, // Envoie la clé 'url' pour passer la validation si nécessaire
-      content: content
-    })
-    const createdComment = response.data.data || response.data
+    // 4. Ajouter un commentaire ou une réponse (POST /api/comments)
+    async addComment(urlId: number, content: string, parentId: number | null = null) {
+      try {
+        const response = await api.post('/comments', {
+          url_id: urlId,
+          url: urlId, // Envoie la clé 'url' pour passer la validation si nécessaire
+          content: content,
+          parent_id: parentId
+        })
+        const createdComment: Comment = response.data.data || response.data
 
-    if (this.currentDiscussion) {
-      if (!this.currentDiscussion.comments) {
-        this.currentDiscussion.comments = []
+        if (this.currentDiscussion) {
+          if (!this.currentDiscussion.comments) {
+            this.currentDiscussion.comments = []
+          }
+
+          if (parentId) {
+            // C'est une réponse : on l'attache au commentaire parent
+            const parent = this.currentDiscussion.comments.find(c => c.id === parentId)
+            if (parent) {
+              if (!parent.replies) parent.replies = []
+              parent.replies.push(createdComment)
+            }
+          } else {
+            // Commentaire de premier niveau
+            this.currentDiscussion.comments.unshift(createdComment)
+          }
+        }
+
+        return createdComment
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          console.error('Erreur lors de l\'ajout du commentaire:', err.response?.data?.message)
+        }
+        throw err
       }
-      this.currentDiscussion.comments.unshift(createdComment)
+    },
+
+    // 5. Supprimer un commentaire ou une réponse (DELETE /api/comments/{id})
+    async deleteComment(commentId: number) {
+      try {
+        await api.delete(`/comments/${commentId}`)
+
+        if (this.currentDiscussion?.comments) {
+          // Retire le commentaire s'il est de premier niveau
+          this.currentDiscussion.comments = this.currentDiscussion.comments.filter(c => c.id !== commentId)
+
+          // Sinon, retire la réponse dans le tableau replies de son parent
+          for (const comment of this.currentDiscussion.comments) {
+            if (comment.replies) {
+              comment.replies = comment.replies.filter(r => r.id !== commentId)
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          console.error('Erreur lors de la suppression du commentaire:', err.response?.data?.message)
+        }
+        throw err
+      }
     }
-  } catch (err: unknown) {
-    if (isAxiosError(err)) {
-      console.error('Erreur lors de l\'ajout du commentaire:', err.response?.data?.message)
-    }
-    throw err
-  }
-}
   }
 })

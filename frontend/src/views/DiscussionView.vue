@@ -11,6 +11,11 @@ const authStore = useAuthStore()
 const newComment = ref('')
 const submittingComment = ref(false)
 
+// Réponses : quel commentaire est en train de recevoir une réponse, et son contenu
+const replyingToId = ref<number | null>(null)
+const replyContent = ref('')
+const submittingReply = ref(false)
+
 // Récupération de l'ID depuis l'URL de la route (ex: /discussion/1)
 const discussionId = route.params.id as string
 
@@ -30,6 +35,38 @@ const handleAddComment = async () => {
     console.error('Erreur lors de l\'envoi du commentaire', error)
   } finally {
     submittingComment.value = false
+  }
+}
+
+// Ouvrir/fermer le formulaire de réponse pour un commentaire donné
+const toggleReply = (commentId: number) => {
+  replyingToId.value = replyingToId.value === commentId ? null : commentId
+  replyContent.value = ''
+}
+
+// Soumission d'une réponse à un commentaire
+const handleAddReply = async (parentId: number) => {
+  if (!replyContent.value.trim() || submittingReply.value) return
+
+  submittingReply.value = true
+  try {
+    await discussionStore.addComment(Number(discussionId), replyContent.value, parentId)
+    replyContent.value = ''
+    replyingToId.value = null
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de la réponse', error)
+  } finally {
+    submittingReply.value = false
+  }
+}
+
+// Suppression d'un commentaire ou d'une réponse (auteur uniquement)
+const handleDeleteComment = async (commentId: number) => {
+  if (!confirm('Supprimer ce commentaire ?')) return
+  try {
+    await discussionStore.deleteComment(commentId)
+  } catch (error) {
+    console.error('Erreur lors de la suppression du commentaire', error)
   }
 }
 </script>
@@ -73,8 +110,8 @@ const handleAddComment = async () => {
   {{ discussionStore.currentDiscussion.title || discussionStore.currentDiscussion.domain || 'Discussion' }}
 </h1>
 
-  <a
-    :href="discussionStore.currentDiscussion.url"
+
+   <a :href="discussionStore.currentDiscussion.url"
     target="_blank"
     rel="noopener noreferrer"
     class="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline break-all"
@@ -139,6 +176,67 @@ const handleAddComment = async () => {
             <p class="text-xs text-on-surface-variant leading-relaxed">
               {{ comment.content }}
             </p>
+
+            <!-- Actions : répondre / supprimer -->
+            <div class="flex items-center gap-3 pt-1">
+              <button
+                v-if="authStore.isAuthenticated"
+                @click="toggleReply(comment.id)"
+                class="text-[11px] font-bold text-primary hover:underline"
+              >
+                {{ replyingToId === comment.id ? 'Annuler' : 'Répondre' }}
+              </button>
+              <button
+                v-if="authStore.user?.id === comment.user_id"
+                @click="handleDeleteComment(comment.id)"
+                class="text-[11px] font-bold text-red-500 hover:underline"
+              >
+                Supprimer
+              </button>
+            </div>
+
+            <!-- Formulaire de réponse -->
+            <div v-if="replyingToId === comment.id" class="pt-2 space-y-2">
+              <textarea
+                v-model="replyContent"
+                rows="2"
+                placeholder="Votre réponse..."
+                class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-outline resize-none"
+              ></textarea>
+              <div class="flex justify-end">
+                <button
+                  @click="handleAddReply(comment.id)"
+                  :disabled="!replyContent.trim() || submittingReply"
+                  class="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-surface-tint disabled:opacity-50 rounded-xl transition-all shadow-sm"
+                >
+                  {{ submittingReply ? 'Envoi...' : 'Répondre' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Réponses imbriquées -->
+            <div v-if="comment.replies?.length" class="ml-4 pl-4 border-l-2 border-outline-variant/30 space-y-3 pt-2">
+              <article
+                v-for="reply in comment.replies"
+                :key="reply.id"
+                class="space-y-1.5"
+              >
+                <div class="flex items-center justify-between text-xs text-outline">
+                  <span class="font-bold text-on-surface">{{ reply.user?.name || 'Utilisateur anonyme' }}</span>
+                  <span class="text-[11px]">{{ reply.created_at }}</span>
+                </div>
+                <p class="text-xs text-on-surface-variant leading-relaxed">
+                  {{ reply.content }}
+                </p>
+                <button
+                  v-if="authStore.user?.id === reply.user_id"
+                  @click="handleDeleteComment(reply.id)"
+                  class="text-[11px] font-bold text-red-500 hover:underline"
+                >
+                  Supprimer
+                </button>
+              </article>
+            </div>
           </article>
 
           <p v-if="!discussionStore.currentDiscussion.comments || discussionStore.currentDiscussion.comments.length === 0" class="text-center text-xs text-outline py-6">
