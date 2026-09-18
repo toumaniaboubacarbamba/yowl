@@ -69,6 +69,25 @@ const handleDeleteComment = async (commentId: number) => {
     console.error('Erreur lors de la suppression du commentaire', error)
   }
 }
+
+// Like / dislike d'un commentaire ou d'une réponse
+const handleReact = async (commentId: number, type: 'like' | 'dislike') => {
+  if (!authStore.user?.id) return
+  try {
+    await discussionStore.toggleInteraction(commentId, type, authStore.user.id)
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de la réaction', error)
+  }
+}
+
+const likeCount = (comment: { interactions?: { type: string }[] }) =>
+  comment.interactions?.filter(i => i.type === 'like').length || 0
+
+const dislikeCount = (comment: { interactions?: { type: string }[] }) =>
+  comment.interactions?.filter(i => i.type === 'dislike').length || 0
+
+const myReaction = (comment: { interactions?: { user_id: number; type: string }[] }) =>
+  comment.interactions?.find(i => i.user_id === authStore.user?.id)?.type
 </script>
 
 <template>
@@ -177,8 +196,26 @@ const handleDeleteComment = async (commentId: number) => {
               {{ comment.content }}
             </p>
 
-            <!-- Actions : répondre / supprimer -->
+            <!-- Actions : réagir / répondre / supprimer -->
             <div class="flex items-center gap-3 pt-1">
+              <button
+                v-if="authStore.isAuthenticated"
+                @click="handleReact(comment.id, 'like')"
+                :class="myReaction(comment) === 'like' ? 'text-primary' : 'text-outline'"
+                class="flex items-center gap-1 text-[11px] font-bold hover:text-primary"
+              >
+                <span class="material-symbols-outlined text-[14px]">thumb_up</span>
+                {{ likeCount(comment) }}
+              </button>
+              <button
+                v-if="authStore.isAuthenticated"
+                @click="handleReact(comment.id, 'dislike')"
+                :class="myReaction(comment) === 'dislike' ? 'text-red-500' : 'text-outline'"
+                class="flex items-center gap-1 text-[11px] font-bold hover:text-red-500"
+              >
+                <span class="material-symbols-outlined text-[14px]">thumb_down</span>
+                {{ dislikeCount(comment) }}
+              </button>
               <button
                 v-if="authStore.isAuthenticated"
                 @click="toggleReply(comment.id)"
@@ -228,13 +265,33 @@ const handleDeleteComment = async (commentId: number) => {
                 <p class="text-xs text-on-surface-variant leading-relaxed">
                   {{ reply.content }}
                 </p>
-                <button
-                  v-if="authStore.user?.id === reply.user_id"
-                  @click="handleDeleteComment(reply.id)"
-                  class="text-[11px] font-bold text-red-500 hover:underline"
-                >
-                  Supprimer
-                </button>
+                <div class="flex items-center gap-3">
+                  <button
+                    v-if="authStore.isAuthenticated"
+                    @click="handleReact(reply.id, 'like')"
+                    :class="myReaction(reply) === 'like' ? 'text-primary' : 'text-outline'"
+                    class="flex items-center gap-1 text-[11px] font-bold hover:text-primary"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">thumb_up</span>
+                    {{ likeCount(reply) }}
+                  </button>
+                  <button
+                    v-if="authStore.isAuthenticated"
+                    @click="handleReact(reply.id, 'dislike')"
+                    :class="myReaction(reply) === 'dislike' ? 'text-red-500' : 'text-outline'"
+                    class="flex items-center gap-1 text-[11px] font-bold hover:text-red-500"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">thumb_down</span>
+                    {{ dislikeCount(reply) }}
+                  </button>
+                  <button
+                    v-if="authStore.user?.id === reply.user_id"
+                    @click="handleDeleteComment(reply.id)"
+                    class="text-[11px] font-bold text-red-500 hover:underline"
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </article>
             </div>
           </article>

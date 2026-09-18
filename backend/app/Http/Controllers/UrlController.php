@@ -17,7 +17,7 @@ class UrlController extends Controller
 
     public function show($id)
     {
-        $url = Url::with(['comments.user', 'comments.interactions', 'comments.replies.user'])->find($id);
+        $url = Url::with(['comments.user', 'comments.interactions', 'comments.replies.user', 'comments.replies.interactions'])->find($id);
 
         if (!$url) {
             return response()->json(['message' => 'URL non trouvée'], 404);

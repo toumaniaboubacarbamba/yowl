@@ -2,6 +2,13 @@ import { defineStore } from 'pinia'
 import { isAxiosError } from 'axios'
 import api from '../services/api'
 
+export interface Interaction {
+  id: number
+  user_id: number
+  comment_id: number
+  type: 'like' | 'dislike'
+}
+
 export interface Comment {
   id: number
   user_id: number
@@ -10,6 +17,7 @@ export interface Comment {
   created_at: string
   parent_id?: number | null
   replies?: Comment[]
+  interactions?: Interaction[]
 }
 
 export interface UrlItem {
@@ -153,6 +161,37 @@ export const useDiscussionStore = defineStore('discussions', {
       } catch (err: unknown) {
         if (isAxiosError(err)) {
           console.error('Erreur lors de la suppression du commentaire:', err.response?.data?.message)
+        }
+        throw err
+      }
+    },
+
+    // 6. Liker ou disliker un commentaire / une réponse (POST /api/interactions)
+    async toggleInteraction(commentId: number, type: 'like' | 'dislike', currentUserId: number) {
+      try {
+        const response = await api.post('/interactions', {
+          comment_id: commentId,
+          type: type
+        })
+        const savedInteraction: Interaction = response.data.data || response.data
+
+        // Cherche le commentaire visé, qu'il soit racine ou réponse
+        const target = this.currentDiscussion?.comments
+          ?.flatMap(c => [c, ...(c.replies || [])])
+          .find(c => c.id === commentId)
+
+        if (target) {
+          if (!target.interactions) target.interactions = []
+          const existing = target.interactions.find(i => i.user_id === currentUserId)
+          if (existing) {
+            existing.type = savedInteraction.type
+          } else {
+            target.interactions.push(savedInteraction)
+          }
+        }
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          console.error('Erreur lors de l\'envoi de la réaction:', err.response?.data?.message)
         }
         throw err
       }
